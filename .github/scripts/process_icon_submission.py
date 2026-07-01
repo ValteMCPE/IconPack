@@ -22,6 +22,12 @@ ALLOWED_FIELDS = frozenset((*REQUIRED_FIELDS, "link"))
 SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 XLINK_NAMESPACE = "http://www.w3.org/1999/xlink"
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
+ANDROID_VECTOR_DIMENSIONS = {
+    "width": "512dp",
+    "height": "512dp",
+    "viewportWidth": "512",
+    "viewportHeight": "512",
+}
 MAX_SVG_BYTES = 700_000
 SVG_NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?"
 SVG_TRANSLATE_PATTERN = re.compile(
@@ -860,6 +866,35 @@ def validate_android_vector_translation(
         )
 
 
+def normalize_android_vector_dimensions(path: Path) -> None:
+    try:
+        root = ElementTree.parse(path).getroot()
+        content = path.read_text(encoding="utf-8")
+    except (ElementTree.ParseError, OSError) as error:
+        raise SubmissionError(
+            f"Cannot normalize Android vector {path.as_posix()}."
+        ) from error
+    if root.tag != "vector":
+        raise SubmissionError(
+            f"{path.as_posix()} is not an Android vector drawable."
+        )
+
+    for attribute, expected_value in ANDROID_VECTOR_DIMENSIONS.items():
+        pattern = re.compile(
+            rf'(android:{re.escape(attribute)}=")[^"]*(")'
+        )
+        content, replacement_count = pattern.subn(
+            rf"\g<1>{expected_value}\g<2>",
+            content,
+            count=1,
+        )
+        if replacement_count != 1:
+            raise SubmissionError(
+                f"{path.as_posix()} requires one android:{attribute} attribute."
+            )
+    path.write_text(content, encoding="utf-8")
+
+
 def convert_android_vector(s2v: Path, source: Path, destination: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="vector-drawable-") as temporary_directory:
         temporary = Path(temporary_directory)
@@ -898,6 +933,7 @@ def convert_android_vector(s2v: Path, source: Path, destination: Path) -> None:
                 f"for {source.as_posix()}."
             )
         validate_android_vector_translation(source, root)
+        normalize_android_vector_dimensions(generated)
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(generated, destination)
 
@@ -1265,6 +1301,7 @@ def update_existing_icons(args: argparse.Namespace) -> None:
             current_kotlin_path.unlink()
         if expected_xml_path != current_xml_path:
             current_xml_path.rename(expected_xml_path)
+        normalize_android_vector_dimensions(expected_xml_path)
 
         entry["Id"] = identifier
         entry["Name"] = name
