@@ -1,5 +1,4 @@
 package moe.rukamori.iconpack
-
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector

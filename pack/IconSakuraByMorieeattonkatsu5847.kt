@@ -1,14 +1,13 @@
-package moe.rukamori.conpack
-
+package moe.rukamori.iconpack
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-val Icon5847: ImageVector by lazy(LazyThreadSafetyMode.NONE) {
+val IconSakuraByMorieeattonkatsu5847: ImageVector by lazy(LazyThreadSafetyMode.NONE) {
     ImageVector.Builder(
-        name = "Icon5847",
+        name = "IconSakuraByMorieeattonkatsu5847",
         defaultWidth = 499.dp,
         defaultHeight = 500.dp,
         viewportWidth = 499f,
