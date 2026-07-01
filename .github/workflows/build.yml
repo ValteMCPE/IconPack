@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
 
     env:
       VALKYRIE_VERSION: 1.2.0
@@ -105,7 +106,26 @@ jobs:
             --package-name "$ICON_PACKAGE_NAME" \
             --random-digits "$ICON_RANDOM_DIGITS"
 
+      - name: Install vector preview renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes librsvg2-bin
+
+      - name: Render generated XML previews
+        working-directory: submission
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 ../trusted/.github/scripts/icon_preview.py generate \
+            --base-sha "$BASE_SHA" \
+            --metadata metadata.json \
+            --xml-directory xml \
+            --output-directory previews \
+            --manifest /tmp/icon-preview-manifest.json \
+            --renderer /usr/bin/rsvg-convert
+
       - name: Commit generated vectors and metadata
+        id: commit-generated
         working-directory: submission
         env:
           ICON_PACK_PAT: ${{ secrets.ICON_PACK_PAT }}
@@ -114,6 +134,7 @@ jobs:
         run: |
           if git diff --quiet && [ -z "$(git status --short)" ]; then
             echo "No generated changes to commit."
+            echo "generated_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -127,9 +148,30 @@ jobs:
           git config user.name "$pat_login"
           git config user.email "${pat_id}+${pat_login}@users.noreply.github.com"
           git add metadata.json pack xml submissions
+          if find previews -maxdepth 1 -type f -name '*.png' -print -quit | grep --quiet .; then
+            git add previews
+          fi
           git commit -m "build(icon-pack): generate submitted vectors"
           git remote set-url origin "https://x-access-token:${ICON_PACK_PAT}@github.com/${HEAD_REPOSITORY}.git"
           git push origin "HEAD:${HEAD_BRANCH}"
+          echo "generated_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Comment generated icon previews
+        working-directory: submission
+        env:
+          ICON_PACK_PAT: ${{ secrets.ICON_PACK_PAT }}
+          BASE_REPOSITORY: ${{ github.repository }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          GENERATED_SHA: ${{ steps.commit-generated.outputs.generated_sha }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 ../trusted/.github/scripts/icon_preview.py comment \
+            --manifest /tmp/icon-preview-manifest.json \
+            --repository "$BASE_REPOSITORY" \
+            --head-repository "$HEAD_REPOSITORY" \
+            --commit-sha "$GENERATED_SHA" \
+            --pull-request "$PULL_REQUEST_NUMBER" \
+            --token "$ICON_PACK_PAT"
 
   rebuild:
     name: Rebuild and reconcile icon pack
