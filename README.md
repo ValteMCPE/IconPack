@@ -73,6 +73,11 @@ community redistribution.
 
 All icons in this pack are contributed by community members. Rights belong to their respective authors. By submitting an icon, you grant the ArchiveTune community permission to use and distribute it as part of this pack.
 
+By submitting an icon, you confirm that you own or are authorized to
+license the submitted work, and you agree to license it under the
+Creative Commons Attribution-ShareAlike 4.0 International license
+(CC BY-SA 4.0).
+
 ---
 
 <div align="center">
